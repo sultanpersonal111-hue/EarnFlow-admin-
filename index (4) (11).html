@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EarnFlow Admin</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+</head>
+<body class="bg-black text-white min-h-screen">
+
+<div class="flex flex-col md:flex-row min-h-screen">
+
+<!-- Sidebar -->
+<div class="w-full md:w-64 bg-zinc-900 p-5 border-r border-zinc-800">
+
+<h1 class="text-3xl font-bold text-green-400 mb-10">
+EarnFlow Admin
+</h1>
+
+<div class="space-y-4">
+
+<button onclick="showSection('dashboardSection')"
+class="w-full text-left bg-green-500 p-3 rounded-xl font-bold">
+Dashboard
+</button>
+
+<button onclick="showSection('usersSection')"
+class="w-full text-left bg-zinc-800 p-3 rounded-xl font-bold">
+Users
+</button>
+
+<button onclick="showSection('withdrawSection')"
+class="w-full text-left bg-zinc-800 p-3 rounded-xl font-bold">
+Withdraws
+</button>
+
+<button onclick="showSection('settingsSection')"
+class="w-full text-left bg-zinc-800 p-3 rounded-xl font-bold">
+Settings
+</button>
+
+<button onclick="logout()"
+class="w-full text-left bg-red-500 p-3 rounded-xl font-bold">
+Logout
+</button>
+
+</div>
+
+</div>
+
+<!-- Main Content -->
+<div class="flex-1 p-6">
+
+<!-- Dashboard -->
+<div id="dashboardSection">
+
+<h1 class="text-4xl font-bold mb-8">Dashboard</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+
+<div class="bg-zinc-900 p-5 rounded-3xl">
+<h2 class="text-lg mb-2">Total Users</h2>
+<h1 id="totalUsers" class="text-4xl font-bold text-green-400">0</h1>
+</div>
+
+<div class="bg-zinc-900 p-5 rounded-3xl">
+<h2 class="text-lg mb-2">Pending Withdraw</h2>
+<h1 id="pendingWithdraw" class="text-4xl font-bold text-yellow-400">0</h1>
+</div>
+
+<div class="bg-zinc-900 p-5 rounded-3xl">
+<h2 class="text-lg mb-2">Approved Withdraw</h2>
+<h1 id="approvedWithdraw" class="text-4xl font-bold text-blue-400">0</h1>
+</div>
+
+<div class="bg-zinc-900 p-5 rounded-3xl">
+<h2 class="text-lg mb-2">Revenue</h2>
+<h1 class="text-4xl font-bold text-red-400">$0</h1>
+</div>
+
+</div>
+
+</div>
+
+<!-- Users -->
+<div id="usersSection" class="hidden mt-10">
+
+<h1 class="text-4xl font-bold mb-6">Users</h1>
+
+<div id="usersList" class="space-y-4"></div>
+
+</div>
+
+<!-- Withdraw -->
+<div id="withdrawSection" class="hidden mt-10">
+
+<h1 class="text-4xl font-bold mb-6">Withdraw Requests</h1>
+
+<div id="withdrawList" class="space-y-4"></div>
+
+</div>
+
+<!-- Settings -->
+<div id="settingsSection" class="hidden mt-10">
+
+<h1 class="text-4xl font-bold mb-6">Settings</h1>
+
+<div class="bg-zinc-900 p-5 rounded-3xl">
+
+<input type="text" placeholder="Monetag Zone ID"
+class="w-full p-3 rounded-xl bg-zinc-800 mb-4 outline-none">
+
+<input type="text" placeholder="8220701408:AAGvbaeC4AzSTKIVc0YQeORTB8SJRHEorOw"
+class="w-full p-3 rounded-xl bg-zinc-800 mb-4 outline-none">
+
+<button class="bg-green-500 px-6 py-3 rounded-xl font-bold">
+Save Settings
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const firebaseConfig = {
+apiKey: "AIzaSyD0vlcKhoA9ZBboB2Sl3L3C7UsMso9xAZQ",
+  authDomain: "earnflow-4fec7.firebaseapp.com",
+  databaseURL: "https://earnflow-4fec7-default-rtdb.firebaseio.com",
+  projectId: "earnflow-4fec7",
+  storageBucket: "earnflow-4fec7.firebasestorage.app",
+  messagingSenderId: "583765163036",
+  appId: "1:583765163036:web:2398fa945f8cc135c5b3d9",
+  measurementId: "G-B4ZXHV686G"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const ADMIN_EMAIL = "sultan.personal.11@gmail.com";
+
+function showSection(sectionId){
+
+const sections = [
+'dashboardSection',
+'usersSection',
+'withdrawSection',
+'settingsSection'
+];
+
+sections.forEach((id)=>{
+document.getElementById(id).classList.add('hidden');
+});
+
+document.getElementById(sectionId).classList.remove('hidden');
+}
+
+function logout(){
+auth.signOut().then(()=>{
+window.location = '../index.html';
+});
+}
+
+auth.onAuthStateChanged((user)=>{
+
+if(user){
+
+if(user.email !== ADMIN_EMAIL){
+alert('Access Denied');
+window.location = '../index.html';
+}else{
+loadUsers();
+loadWithdraws();
+}
+
+}else{
+window.location = '../index.html';
+}
+
+});
+
+function loadUsers(){
+
+const usersList = document.getElementById('usersList');
+
+ db.collection('users').onSnapshot((snapshot)=>{
+
+usersList.innerHTML = '';
+
+document.getElementById('totalUsers').innerText = snapshot.size;
+
+snapshot.forEach((doc)=>{
+
+const user = doc.data();
+
+usersList.innerHTML += `
+
+<div class="bg-zinc-900 p-5 rounded-3xl flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+
+<div>
+<h2 class="text-xl font-bold">${user.email}</h2>
+<p class="text-zinc-400">Balance: $${user.balance || 0}</p>
+</div>
+
+<div class="flex gap-3">
+
+<button onclick="addBalance('${doc.id}')"
+class="bg-green-500 px-4 py-2 rounded-xl font-bold">
+Add Balance
+</button>
+
+<button onclick="banUser('${doc.id}')"
+class="bg-red-500 px-4 py-2 rounded-xl font-bold">
+Ban
+</button>
+
+</div>
+
+</div>
+
+`;
+
+});
+
+});
+
+}
+
+function addBalance(uid){
+
+const amount = prompt('Enter Balance Amount');
+
+if(!amount) return;
+
+const userRef = db.collection('users').doc(uid);
+
+userRef.get().then((doc)=>{
+
+const oldBalance = doc.data().balance || 0;
+
+userRef.update({
+balance: oldBalance + parseFloat(amount)
+});
+
+alert('Balance Added Successfully');
+
+});
+
+}
+
+function banUser(uid){
+
+if(confirm('Ban this user?')){
+
+ db.collection('users').doc(uid).update({
+ banned:true
+ });
+
+ alert('User Banned');
+
+}
+
+}
+
+function loadWithdraws(){
+
+const withdrawList = document.getElementById('withdrawList');
+
+ db.collection('withdraws').onSnapshot((snapshot)=>{
+
+withdrawList.innerHTML = '';
+
+let pending = 0;
+let approved = 0;
+
+snapshot.forEach((doc)=>{
+
+const data = doc.data();
+
+if(data.status === 'pending') pending++;
+if(data.status === 'approved') approved++;
+
+withdrawList.innerHTML += `
+
+<div class="bg-zinc-900 p-5 rounded-3xl">
+
+<h2 class="text-2xl font-bold mb-2">${data.email}</h2>
+
+<p class="mb-1">Method: ${data.method}</p>
+<p class="mb-1">Amount: $${data.amount}</p>
+<p class="mb-4">Status: ${data.status}</p>
+
+<div class="flex gap-3">
+
+<button onclick="approveWithdraw('${doc.id}')"
+class="bg-green-500 px-5 py-2 rounded-xl font-bold">
+Approve
+</button>
+
+<button onclick="rejectWithdraw('${doc.id}')"
+class="bg-red-500 px-5 py-2 rounded-xl font-bold">
+Reject
+</button>
+
+</div>
+
+</div>
+
+`;
+
+});
+
+ document.getElementById('pendingWithdraw').innerText = pending;
+ document.getElementById('approvedWithdraw').innerText = approved;
+
+});
+
+}
+
+function approveWithdraw(id){
+
+ db.collection('withdraws').doc(id).update({
+ status:'approved'
+ });
+
+ alert('Withdraw Approved');
+
+}
+
+function rejectWithdraw(id){
+
+ db.collection('withdraws').doc(id).update({
+ status:'rejected'
+ });
+
+ alert('Withdraw Rejected');
+
+}
+
+</script>
+
+</body>
+</html>
